@@ -81,12 +81,15 @@ export function CameraRig({ catalog, initial }: { catalog: Catalog; initial: Ini
     c.touches.three = CameraControlsImpl.ACTION.NONE;
   }, []);
 
-  // Camera commands from the UI.
+  // Camera commands from the UI. Commands issued before this component
+  // mounted (e.g. a shared ?sat= link) are replayed once on mount.
+  const handled = useRef(0);
   useEffect(() => {
-    return useAtlas.subscribe((s, prev) => {
+    const run = (s: ReturnType<typeof useAtlas.getState>) => {
       const cmd = s.camera;
       const c = controls.current;
-      if (!cmd || cmd === prev.camera || !c) return;
+      if (!cmd || cmd.id <= handled.current || !c) return;
+      handled.current = cmd.id;
       const now = simClock.now();
       if (cmd.kind === 'home') {
         const v = defaultView();
@@ -118,32 +121,41 @@ export function CameraRig({ catalog, initial }: { catalog: Catalog; initial: Ini
         if (s.follow) void c.setLookAt(camPos.x, camPos.y, camPos.z, st.x, st.y, st.z, true);
         else void c.setLookAt(camPos.x, camPos.y, camPos.z, 0, 0, 0, true);
       }
-    });
+    };
+    run(useAtlas.getState());
+    return useAtlas.subscribe((s) => run(s));
   }, [catalog, tmp]);
 
-  // Follow mode transitions.
+  // Follow mode: state-driven (not transition-driven) so a shared
+  // ?sat=…&follow=1 link works even though the scene mounts late.
+  const followIdx = useRef(-1);
   useEffect(() => {
-    return useAtlas.subscribe((s, prev) => {
+    const sync = (s: ReturnType<typeof useAtlas.getState>) => {
       const c = controls.current;
       if (!c) return;
-      if (s.follow && s.selected >= 0 && (!prev.follow || s.selected !== prev.selected)) {
+      const want = s.follow && s.selected >= 0;
+      if (want && (!following.current || followIdx.current !== s.selected)) {
         const sr = satrecFor(catalog, s.selected);
         const st = sr && stateAt(sr, simClock.now());
         if (!st) return;
         following.current = true;
+        followIdx.current = s.selected;
         c.minDistance = 0.03;
         tmp.v.set(st.x, st.y, st.z).normalize();
         const off = tmp.v.clone().multiplyScalar(0.55).add(new THREE.Vector3(0, 0.25, 0));
         void c.setLookAt(st.x + off.x, st.y + off.y, st.z + off.z, st.x, st.y, st.z, true);
-      } else if ((!s.follow || s.selected < 0) && following.current) {
+      } else if (!want && following.current) {
         following.current = false;
+        followIdx.current = -1;
         c.minDistance = 1.12;
         c.getPosition(tmp.v);
         const d = Math.max(tmp.v.length(), 2.2);
         tmp.v.normalize().multiplyScalar(d);
         void c.setLookAt(tmp.v.x, tmp.v.y, tmp.v.z, 0, 0, 0, true);
       }
-    });
+    };
+    sync(useAtlas.getState());
+    return useAtlas.subscribe(sync);
   }, [catalog, tmp]);
 
   // Pointer picking.

@@ -29,7 +29,7 @@ export function ExplorePanel() {
 
   return (
     <nav
-      className="glass pointer-events-auto absolute left-4 top-[72px] hidden w-[208px] rounded-2xl py-2 lg:block"
+      className="glass thin-scroll pointer-events-auto absolute left-4 top-[72px] hidden max-h-[calc(100dvh-250px)] w-[208px] overflow-y-auto rounded-2xl py-2 lg:block"
       aria-label="Explore"
       onMouseLeave={() => setPreview(undefined)}
     >

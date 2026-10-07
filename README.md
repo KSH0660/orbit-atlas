@@ -11,6 +11,12 @@ The UX is the point, not the volume of data. Everything you do (click an Explore
 
 > Product research and the reasoning behind the interaction model: [`docs/RESEARCH.md`](docs/RESEARCH.md)
 
+![Overview: every active satellite, with in-view statistics](docs/screenshot-overview.jpg)
+
+| Starlink lens | Selected satellite (ISS) |
+|---|---|
+| ![Starlink lens](docs/screenshot-starlink.jpg) | ![ISS selected with orbit trail and ground track](docs/screenshot-iss.jpg) |
+
 ---
 
 ## Features
@@ -175,6 +181,7 @@ The layers are separated so new features plug in without touching the core:
 ## Testing
 
 - `npm test` covers: CSV/OMM parsing (including 6-digit NORAD ids and CelesTrak throttle notices), classification rules, regime derivation, payload round-trip, lens algebra, URL state round-trip, search ranking (including Korean aliases), stats/insights, frame math (GMST, sun position, lat/lon round-trip), and the full server fallback chain (live → warm cache → snapshot, plus *throw on runtime revalidation*).
+- The build-time live path was checked with `CELESTRAK_BASE_URL` pointed at a local mock: one GP and one SATCAT request at build, then served from the ISR cache (`x-nextjs-cache: HIT`, `source: live`).
 - UX was checked by driving the real app in headless Chromium (desktop 1440×900 and mobile 390×844) through these flows: first view, Explore preview → lens, search "ISS" → select → follow, Starlink lens → *Compare* → China, altitude brush, GNSS *Only* with orbits, Korean search on mobile.
 
 ---

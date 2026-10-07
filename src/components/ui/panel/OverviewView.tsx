@@ -29,21 +29,29 @@ export function OverviewView({ scope, setScope }: { scope: 'view' | 'all'; setSc
     <>
       <div className="px-4 pb-3 pt-4">
         <div className="flex items-center justify-between">
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.13em] text-[#8b93a7]">
-            {scope === 'view' ? 'In this view' : 'Everywhere'}
-          </span>
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.13em] text-[#8b93a7]">Right now</span>
           <ScopeToggle scope={scope} onChange={setScope} />
         </div>
         <div className="mt-1.5 flex items-baseline gap-2">
-          <span className="tabular text-[34px] font-semibold leading-none tracking-tight text-white">{fmt(s.total)}</span>
-          <span className="text-[13px] text-[#c6cbd8]">active satellites</span>
+          <span className="tabular text-[34px] font-semibold leading-none tracking-tight text-white">{fmt(total)}</span>
+          <span className="text-[13px] text-[#c6cbd8]">active satellites in orbit</span>
         </div>
-        {scope === 'view' && (
-          <div className="mt-1 text-[12px] text-[#8b93a7]">
-            of <span className="tabular text-[#c6cbd8]">{fmt(total)}</span> worldwide · rotate or zoom to update
-          </div>
-        )}
+        <div className="mt-1.5 text-[12px] text-[#8b93a7]">
+          {scope === 'view' ? (
+            <>
+              <span className="tabular font-semibold text-[#e9f4ff]">{fmt(s.total)}</span> in this view · the numbers below follow the camera
+            </>
+          ) : (
+            <>Numbers below cover every active satellite</>
+          )}
+        </div>
       </div>
+
+      {insights.length > 0 && (
+        <Section title="Worth knowing">
+          <InsightList items={insights.slice(0, 3)} />
+        </Section>
+      )}
 
       <Section title="Where they fly">
         <AltitudeHistogram base={s.altHist} onRange={(r) => r && applyLens({ altitude: r })} />
@@ -67,9 +75,9 @@ export function OverviewView({ scope, setScope }: { scope: 'view' | 'all'; setSc
         />
       </Section>
 
-      {insights.length > 0 && (
-        <Section title="Worth knowing">
-          <InsightList items={insights} max={4} />
+      {insights.length > 3 && (
+        <Section title={scope === 'view' ? 'Also in this view' : 'More facts'}>
+          <InsightList items={insights.slice(3)} />
         </Section>
       )}
     </>

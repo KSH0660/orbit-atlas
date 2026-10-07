@@ -63,6 +63,16 @@ export function scopeInsights(cat: Catalog, s: Stats, scopeLabel: 'in view' | 'i
     });
   }
 
+  const kr = s.bloc[BLOC_INDEX.KR];
+  if (kr > 0) {
+    out.push({
+      id: 'korea',
+      value: fmtInt(kr),
+      label: `South Korean satellites ${scopeLabel}`,
+      lens: { countries: ['KR'] },
+    });
+  }
+
   if (s.launchedLast12Months >= 10) {
     out.push({
       id: 'new',
@@ -72,13 +82,12 @@ export function scopeInsights(cat: Catalog, s: Stats, scopeLabel: 'in view' | 'i
     });
   }
 
-  const kr = s.bloc[BLOC_INDEX.KR];
-  if (kr > 0) {
+  if (s.launchedLast30Days > 0) {
     out.push({
-      id: 'korea',
-      value: fmtInt(kr),
-      label: `South Korean satellites ${scopeLabel}`,
-      lens: { countries: ['KR'] },
+      id: 'new-30',
+      value: `+${fmtInt(s.launchedLast30Days)}`,
+      label: `new satellites ${scopeLabel} launched in the last 30 days`,
+      lens: { launchedWithinDays: 30 },
     });
   }
 

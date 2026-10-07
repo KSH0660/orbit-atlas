@@ -37,6 +37,7 @@ export interface Stats {
   altHist: Uint32Array;
   /** Per-bin dominant mission index (for tooltips). */
   launchedLast12Months: number;
+  launchedLast30Days: number;
   medianAltKm: number;
 }
 
@@ -67,7 +68,9 @@ export function aggregate(cat: Catalog, idx: ArrayLike<number>, now = Date.now()
   const operator = new Map<number, number>();
   const country = new Map<number, number>();
   const yearAgo = now - 365 * 86400_000;
+  const monthAgo = now - 30 * 86400_000;
   let launched = 0;
+  let launched30 = 0;
   const alts = new Float32Array(idx.length);
 
   for (let k = 0; k < idx.length; k++) {
@@ -80,7 +83,10 @@ export function aggregate(cat: Catalog, idx: ArrayLike<number>, now = Date.now()
     if (cat.constellation[i] >= 0) bump(constellation, cat.constellation[i]);
     bump(operator, cat.operator[i]);
     bump(country, cat.country[i]);
-    if (cat.launchMs[i] >= yearAgo) launched++;
+    if (cat.launchMs[i] >= yearAgo) {
+      launched++;
+      if (cat.launchMs[i] >= monthAgo) launched30++;
+    }
     alts[k] = cat.meanAltKm[i];
   }
   alts.sort();
@@ -95,6 +101,7 @@ export function aggregate(cat: Catalog, idx: ArrayLike<number>, now = Date.now()
     country,
     altHist,
     launchedLast12Months: launched,
+    launchedLast30Days: launched30,
     medianAltKm: alts.length ? alts[alts.length >> 1] : 0,
   };
 }
@@ -111,24 +118,28 @@ export function shellNeighbours(cat: Catalog, altKm: number, band = 25): number 
 }
 
 /**
- * Congestion percentile of a satellite's shell: share of all satellites that
- * sit in a *less* crowded ±25 km shell than this one.
+ * How crowded a satellite's altitude shell is: neighbours within ±band km, and
+ * that count ranked against every occupied 2·band-wide altitude band.
  */
-export function shellPercentile(cat: Catalog, altKm: number, band = 25): { neighbours: number; percentile: number } {
-  // Sorted altitudes + two-pointer sweep gives each satellite's shell count.
-  const sorted = Float32Array.from(cat.meanAltKm).sort();
-  const counts = new Uint32Array(sorted.length);
-  let lo = 0;
-  let hi = 0;
-  for (let i = 0; i < sorted.length; i++) {
-    while (sorted[lo] < sorted[i] - band) lo++;
-    while (hi < sorted.length && sorted[hi] <= sorted[i] + band) hi++;
-    counts[i] = hi - lo;
+export function shellPercentile(
+  cat: Catalog,
+  altKm: number,
+  band = 25,
+): { neighbours: number; percentile: number; busiest: boolean } {
+  const width = band * 2;
+  const bins = new Map<number, number>();
+  for (let i = 0; i < cat.count; i++) {
+    const b = Math.floor(cat.meanAltKm[i] / width);
+    bins.set(b, (bins.get(b) ?? 0) + 1);
   }
   const neighbours = shellNeighbours(cat, altKm, band);
   let below = 0;
-  for (let i = 0; i < counts.length; i++) if (counts[i] < neighbours) below++;
-  return { neighbours, percentile: sorted.length ? below / sorted.length : 0 };
+  let max = 0;
+  for (const c of bins.values()) {
+    if (c < neighbours) below++;
+    if (c > max) max = c;
+  }
+  return { neighbours, percentile: bins.size ? below / bins.size : 0, busiest: neighbours >= max };
 }
 
 /**

@@ -23,14 +23,14 @@ export const MISSION_INDEX: Record<MissionId, number> = Object.fromEntries(
 
 /** Owner blocs: how the first screen answers "who operates them". */
 export const BLOCS = [
-  { id: 'US', label: 'United States', color: '#3987e5' },
-  { id: 'CN', label: 'China', color: '#d95926' },
-  { id: 'EU', label: 'Europe', color: '#199e70' },
-  { id: 'RU', label: 'Russia', color: '#c98500' },
-  { id: 'JP', label: 'Japan', color: '#d55181' },
-  { id: 'IN', label: 'India', color: '#008300' },
-  { id: 'KR', label: 'South Korea', color: '#9085e9' },
-  { id: 'OT', label: 'Rest of world', color: '#8b93a7' },
+  { id: 'US', label: 'United States', short: 'US', color: '#3987e5' },
+  { id: 'CN', label: 'China', short: 'China', color: '#d95926' },
+  { id: 'EU', label: 'Europe', short: 'Europe', color: '#199e70' },
+  { id: 'RU', label: 'Russia', short: 'Russia', color: '#c98500' },
+  { id: 'JP', label: 'Japan', short: 'Japan', color: '#d55181' },
+  { id: 'IN', label: 'India', short: 'India', color: '#008300' },
+  { id: 'KR', label: 'South Korea', short: 'S. Korea', color: '#9085e9' },
+  { id: 'OT', label: 'Rest of world', short: 'Other', color: '#8b93a7' },
 ] as const;
 
 export type BlocId = (typeof BLOCS)[number]['id'];

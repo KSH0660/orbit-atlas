@@ -120,7 +120,7 @@ export function Legend() {
   const items: { key: string; label: string; color: string; lens?: Lens }[] =
     colorBy === 'mission'
       ? MISSIONS.map((m) => ({ key: m.id, label: m.short, color: m.color, lens: { missions: [m.id] } }))
-      : BLOCS.map((b) => ({ key: b.id, label: b.label, color: b.color, lens: b.id === 'OT' ? undefined : { blocs: [b.id] } }));
+      : BLOCS.map((b) => ({ key: b.id, label: b.short, color: b.color, lens: b.id === 'OT' ? undefined : { blocs: [b.id] } }));
 
   return (
     <div className="glass pointer-events-auto rounded-xl px-3 py-2" onMouseLeave={() => setPreview(undefined)}>

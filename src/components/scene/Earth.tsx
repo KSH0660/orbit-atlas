@@ -46,14 +46,14 @@ const fragment = /* glsl */ `
     vec3 lit = dayCol * (0.18 + 0.82 * clamp(ndl * 1.2 + 0.1, 0.0, 1.0));
 
     vec3 night = texture2D(nightMap, vUv).rgb;
-    night = pow(night, vec3(1.4)) * vec3(1.0, 0.72, 0.42) * 1.6;
+    night = pow(night, vec3(1.25)) * vec3(1.0, 0.74, 0.45) * 2.1;
     vec3 dark = dayCol * 0.035 + night;
 
     vec3 col = mix(dark, lit, day);
 
     float water = texture2D(waterMap, vUv).r;
     vec3 h = normalize(sunDir + viewDir);
-    float spec = pow(max(dot(n, h), 0.0), 90.0) * water * 0.1 * day;
+    float spec = pow(max(dot(n, h), 0.0), 160.0) * water * 0.07 * day;
     col += spec * vec3(1.0, 0.94, 0.82);
 
     // Limb tint: thin atmosphere edge on the lit side.

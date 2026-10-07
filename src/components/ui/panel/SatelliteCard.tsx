@@ -13,7 +13,7 @@ import { fmt, fmtAge, fmtDuration, fmtLat, fmtLon, pct } from '../format';
 import { CloseIcon, FocusIcon, FollowIcon, ShareIcon } from '../icons';
 import { ActionButton, Section, Stat } from './parts';
 
-const shellCache = new Map<string, { neighbours: number; percentile: number }>();
+const shellCache = new Map<string, ReturnType<typeof shellPercentile>>();
 
 export function SatelliteCard({ onShared }: { onShared: (ok: boolean) => void }) {
   const catalog = useAtlas((s) => s.catalog)!;
@@ -61,7 +61,7 @@ export function SatelliteCard({ onShared }: { onShared: (ok: boolean) => void })
   const mass = catalog.massKg[i];
   const all = allScope(catalog).stats;
   const orbitsPerDay = catalog.meanMotion[i];
-  const busy = shell.percentile >= 0.5;
+  const busy = shell.percentile >= 0.6;
 
   return (
     <>
@@ -159,13 +159,15 @@ export function SatelliteCard({ onShared }: { onShared: (ok: boolean) => void })
         </div>
         <div className="mt-2 rounded-lg bg-white/[0.04] px-3 py-2 text-[12px] leading-snug text-[#c6cbd8]">
           <span className="tabular font-semibold text-white">{fmt(shell.neighbours)}</span> satellites share its ±25 km altitude shell
-          {busy ? (
+          {shell.busiest ? (
+            <> — one of the most crowded altitudes in orbit.</>
+          ) : busy ? (
             <>
               {' '}
-              — busier than <span className="font-semibold text-white">{pct(shell.percentile, 1)}</span> of occupied orbits.
+              — busier than <span className="font-semibold text-white">{pct(shell.percentile, 1)}</span> of occupied 50 km altitude bands.
             </>
           ) : (
-            <> — a relatively quiet shell.</>
+            <> — a relatively quiet altitude.</>
           )}
         </div>
       </Section>
