@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spec-to-Knowledge</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232457d6'/%3E%3Cpath d='M9 8h10l4 4v12H9z' fill='%23fff'/%3E%3Cpath d='M12 15h8M12 19h8M12 23h5' stroke='%232457d6' stroke-width='2'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/docs">
+      <span class="logo" aria-hidden="true">S→K</span>
+      <span>Spec-to-Knowledge</span>
+    </a>
+    <nav class="mainnav" aria-label="주 메뉴">
+      <a href="#/docs" data-nav="docs">문서</a>
+      <a href="#/profiles" data-nav="profiles">프로필</a>
+      <a href="#/providers" data-nav="providers">모델 / API</a>
+      <a href="#/help" data-nav="help">사용 안내</a>
+    </nav>
+    <div class="server-status" id="server-status" title="서버 상태">…</div>
+  </header>
+  <main id="app" class="app" tabindex="-1"></main>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="modal-root"></div>
+  <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>
