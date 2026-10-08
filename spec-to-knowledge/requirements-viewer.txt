@@ -1,2 +1,0 @@
-# Optional: view an exported knowledge base with MkDocs on the closed network.
-mkdocs==1.6.1
