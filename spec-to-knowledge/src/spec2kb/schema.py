@@ -167,6 +167,8 @@ class PageInfo(BaseModel):
     number: int
     width: float
     height: float
+    origin: list[float] = Field(default_factory=lambda: [0.0, 0.0],
+                                description="top-left of the visible page (CropBox) in block coordinates")
     kind: Literal["text", "scanned", "toc", "blank", "cover"] = "text"
     status: Literal["ok", "warning", "error", "skipped", "pending"] = "pending"
     char_count: int = 0

@@ -164,7 +164,8 @@ def parse_page(ctx: DocContext, number: int) -> PageResult:
     with ctx.pdf.page(number) as page:
         page_w, page_h = float(page.width), float(page.height)
         cropbox = [float(v) for v in page.cropbox]
-        info = PageInfo(number=number, width=round(page_w, 2), height=round(page_h, 2))
+        info = PageInfo(number=number, width=round(page_w, 2), height=round(page_h, 2),
+                        origin=[round(cropbox[0], 2), round(cropbox[1], 2)])
         result = PageResult(info=info)
         words = words_from_page(page)
         info.char_count = sum(len(w.text) for w in words)
@@ -193,10 +194,11 @@ def parse_page(ctx: DocContext, number: int) -> PageResult:
         if content_chars < pcfg.scanned.min_chars and (big_image or (images and content_chars == 0)):
             info.kind = "scanned"
             info.status = "warning"
-            fig = Figure(id=f"page-{number:04d}", page=number, bbox=[0, 0, page_w, page_h], kind="page",
+            full = [round(v, 2) for v in cropbox]
+            fig = Figure(id=f"page-{number:04d}", page=number, bbox=full, kind="page",
                          caption="", title=f"Scanned page {number}", image_type="scanned_page")
             if ctx.render:
-                _render_asset(ctx, fig, number, [0, 0, page_w, page_h], pcfg.scanned.ocr_dpi, cropbox)
+                _render_asset(ctx, fig, number, full, pcfg.scanned.ocr_dpi, cropbox)
             result.figures.append(fig)
             result.blocks.append(Block(id=f"p{number:04d}-b000", type="figure", page=number,
                                        bbox=fig.bbox, ref=fig.id, origin="ocr"))
@@ -483,7 +485,7 @@ def parse_page(ctx: DocContext, number: int) -> PageResult:
                 t_i += 1
                 table = _to_table(el, number, t_i)
                 if ctx.render and pcfg.tables.snapshot:
-                    region = _pad(el.bbox, 3, page_w, page_h)
+                    region = _pad(el.bbox, 3, cropbox)
                     try:
                         img = ctx.pdf.render(number, region, pcfg.tables.snapshot_dpi, 3000, cropbox)
                         name = f"{table.id}-p{number:04d}.png"
@@ -505,7 +507,7 @@ def parse_page(ctx: DocContext, number: int) -> PageResult:
                 f_i += 1
                 fig = _to_figure(el, number, f_i, rules)
                 if ctx.render:
-                    region = _pad(el.bbox, pcfg.figures.padding, page_w, page_h)
+                    region = _pad(el.bbox, pcfg.figures.padding, cropbox)
                     try:
                         _render_asset(ctx, fig, number, region, pcfg.figures.render_dpi, cropbox,
                                       pcfg.figures.max_pixels)
@@ -529,8 +531,10 @@ def _label(kind: str, number: str | None) -> str:
     return f"{kind} {number}" if number else f"{kind} (번호 없음)"
 
 
-def _pad(b: list[float], pad: float, w: float, h: float) -> list[float]:
-    return [max(0.0, b[0] - pad), max(0.0, b[1] - pad), min(w, b[2] + pad), min(h, b[3] + pad)]
+def _pad(b: list[float], pad: float, bounds: list[float]) -> list[float]:
+    """Grow a region by ``pad`` points, clamped to the visible page (CropBox, MediaBox coordinates)."""
+    return [max(bounds[0], b[0] - pad), max(bounds[1], b[1] - pad), min(bounds[2], b[2] + pad),
+            min(bounds[3], b[3] + pad)]
 
 
 def _png_bytes(img) -> bytes:

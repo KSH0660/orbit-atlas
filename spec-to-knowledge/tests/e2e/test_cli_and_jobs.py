@@ -70,3 +70,29 @@ def test_cancel_running_job(workspace, samples):
     assert ws.docs.record(rec.id).status == "cancelled"
     # nothing half-written: no canonical document from the cancelled first run
     assert ws.docs.canonical(rec.id) is None
+
+
+def test_job_state_consistent_while_finishing(tmp_path):
+    """While the document record is being updated, the job no longer counts as active, and the
+    final status only becomes visible after the record update (no stale reads either way)."""
+    import threading
+
+    from spec2kb.jobs import JobManager
+    jm = JobManager(tmp_path, workers=1)
+    seen = {}
+    gate = threading.Event()
+
+    def on_finish(job, status):
+        seen["active_during_finish"] = jm.active_job("doc1")
+        seen["status_during_finish"] = job.status
+        gate.wait(5)
+
+    job = jm.submit("process", "doc1", lambda ctx: {"ok": True}, on_finish=on_finish)
+    deadline = time.monotonic() + 5
+    while "status_during_finish" not in seen and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert seen["active_during_finish"] is None        # UI routes to the result, not to a running job
+    assert jm.get(job.id).status == "running"          # pollers do not see "done" before the record
+    gate.set()
+    assert jm.wait(job.id, 5).status == "done"
+    jm.shutdown()

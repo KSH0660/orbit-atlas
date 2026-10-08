@@ -57,6 +57,7 @@ export async function renderReview(root, doc, page, go) {
     const img = h("img", { src: `/api/docs/${doc.id}/pages/${p.number}/image`, alt: `${p.number}쪽 원본`, loading: "eager" });
     imgWrap.appendChild(img);
     const W = p.width || 612, H = p.height || 792;
+    const [ox, oy] = p.origin || [0, 0];  // CropBox offset: block coordinates are in MediaBox space
     for (const item of data.blocks) {
       const b = item.block;
       let bbox = b.page === current ? b.bbox : null;
@@ -65,7 +66,7 @@ export async function renderReview(root, doc, page, go) {
         if (part) bbox = part.bbox;
       }
       if (!bbox) continue;
-      const [x0, y0, x1, y1] = bbox;
+      const [x0, y0, x1, y1] = [bbox[0] - ox, bbox[1] - oy, bbox[2] - ox, bbox[3] - oy];
       const box = h("div", { class: `bbox t-${b.type}`, "data-bid": b.id, title: BLOCK_LABEL[b.type] || b.type,
         style: { left: `${(x0 / W) * 100}%`, top: `${(y0 / H) * 100}%`, width: `${((x1 - x0) / W) * 100}%`, height: `${((y1 - y0) / H) * 100}%` },
         onmouseenter: () => highlight(b.id, true), onmouseleave: () => highlight(b.id, false),

@@ -1,6 +1,6 @@
 # Canonical JSON 스키마
 
-Canonical JSON은 파서·검증기·Markdown 생성기·웹 UI가 함께 쓰는 중간 데이터입니다. 기계용 정의는 [canonical.schema.json](canonical.schema.json)(`spec2kb schema`로 생성)에 있습니다. 좌표는 PDF 포인트이며 원점은 왼쪽 위입니다: `[x0, top, x1, bottom]`. 페이지 번호는 1부터 셉니다.
+Canonical JSON은 파서·검증기·Markdown 생성기·웹 UI가 함께 쓰는 중간 데이터입니다. 기계용 정의는 [canonical.schema.json](canonical.schema.json)(`spec2kb schema`로 생성)에 있습니다. 좌표는 PDF 포인트이며 원점은 왼쪽 위입니다: `[x0, top, x1, bottom]`(MediaBox 기준). 보이는 영역(CropBox)이 다르면 `pages[].origin`에 그 왼쪽 위 좌표가 기록되고, `width`·`height`는 보이는 영역의 크기입니다. 페이지 번호는 1부터 셉니다.
 
 ```jsonc
 {
@@ -11,7 +11,7 @@ Canonical JSON은 파서·검증기·Markdown 생성기·웹 UI가 함께 쓰는
   "metadata": {"title": "Synthetic DDR6 SDRAM Specification", "doc_number": "JESD-SYN-01", "revision": "1.0",
                "date": "", "publisher": "JEDEC", "tags": ["jedec"]},
   "metadata_override": {"revision": "1.0a"},                 // 사용자 수정 (effective = metadata + override)
-  "pages": [{"number": 2, "width": 612, "height": 792, "kind": "toc", "status": "skipped",
+  "pages": [{"number": 2, "width": 612, "height": 792, "origin": [0, 0], "kind": "toc", "status": "skipped",
              "removed_lines": ["JEDEC-Style Sample Standard No. SYN-01", "Page 2"],
              "source_text": "…텍스트 레이어 원문(머리글/바닥글 제외)…", "messages": ["목차 페이지로 판단…"]}],
   "blocks": [                                                  // 읽기 순서

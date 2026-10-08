@@ -173,3 +173,27 @@ def test_caption_patterns():
     for text, num in cases.items():
         m = t.match(text) or f.match(text)
         assert m and m.group("num") == num, text
+
+
+def test_cropbox_pages_keep_structure_and_regions(tmp_path, samples, profile_store, parse_sample):
+    """PDFs whose CropBox differs from the MediaBox: same structure, figure renders not clipped."""
+    import pypdfium2 as pdfium
+    from PIL import Image
+
+    from spec2kb.parser import assemble, parse_pages_raw
+    from spec2kb.schema import SourceInfo
+    src = pdfium.PdfDocument(str(samples / "jedec_like_spec.pdf"))
+    for i in range(len(src)):
+        src[i].set_cropbox(20, 20, 600, 780)
+    cropped = tmp_path / "cropped.pdf"
+    src.save(str(cropped))
+    profile = profile_store.resolve("jedec")
+    raw, furniture, n = parse_pages_raw(cropped, profile, list(range(1, 11)), tmp_path / "assets")
+    doc = assemble("c", "c", SourceInfo(filename="c.pdf", sha256="x", size_bytes=1, page_count=n), profile, raw,
+                   furniture)
+    ref, *_ = parse_sample("jedec_like_spec", "jedec")
+    assert [(b.type, b.text) for b in doc.blocks] == [(b.type, b.text) for b in ref.blocks]
+    assert doc.page(6).origin == [20.0, 12.0]
+    for f, rf in zip(doc.figures, ref.figures):
+        img = Image.open(tmp_path / "assets" / f.asset)
+        assert abs(img.size[0] - rf.width_px) <= 2 and abs(img.size[1] - rf.height_px) <= 2

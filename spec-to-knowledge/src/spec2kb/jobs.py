@@ -64,6 +64,7 @@ class JobContext:
         self.manager = manager
         self.job = job
         self._cancel = threading.Event()
+        self.finishing = False  # work is over; only the document record is being updated
 
     def progress(self, phase: str, current: int, total: int, message: str = "") -> None:
         lo, hi = PHASE_WEIGHTS.get(phase, (0, 100))
@@ -163,7 +164,9 @@ class JobManager:
             job.log.append(traceback.format_exc(limit=8))
         finally:
             # update dependent state (document record) before the final status becomes visible,
-            # so that anyone polling the job never reads a stale document
+            # so that anyone polling the job never reads a stale document; while finishing, the
+            # job no longer counts as active (the record already shows the outcome)
+            ctx.finishing = True
             if on_finish is not None:
                 try:
                     on_finish(job, final)
@@ -200,7 +203,10 @@ class JobManager:
     def active_job(self, doc_id: str) -> Job | None:
         jid = self.active_by_doc.get(doc_id)
         job = self.jobs.get(jid) if jid else None
-        return job if job and job.status in ("queued", "running") else None
+        ctx = self.contexts.get(jid) if jid else None
+        if job is None or job.status not in ("queued", "running") or (ctx is not None and ctx.finishing):
+            return None
+        return job
 
     def cancel(self, job_id: str) -> bool:
         ctx = self.contexts.get(job_id)

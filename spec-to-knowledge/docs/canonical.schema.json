@@ -573,6 +573,14 @@
           "title": "Height",
           "type": "number"
         },
+        "origin": {
+          "description": "top-left of the visible page (CropBox) in block coordinates",
+          "items": {
+            "type": "number"
+          },
+          "title": "Origin",
+          "type": "array"
+        },
         "kind": {
           "default": "text",
           "enum": [
