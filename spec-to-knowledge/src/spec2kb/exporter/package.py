@@ -10,6 +10,7 @@ and plain Git repository browsers.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import zipfile
 from dataclasses import dataclass, field
@@ -106,7 +107,9 @@ class DocumentExporter:
             if head is None:
                 continue
             label = f"{head.number} {head.text}" if head.number and not head.number[:1].isdigit() else head.text
-            base = slugify(label or head.number or "section", 50)
+            base = slugify(label or "", 50, fallback="")
+            if not base:  # non-Latin titles (e.g. Korean): fall back to the section number
+                base = f"sec-{slugify(head.number, 20)}" if head.number else "section"
             try:
                 name = self.md.file_name_pattern.format(index=len(names) + 1, slug=base,
                                                         number=slugify(head.number or "", 20, fallback=""))
@@ -260,7 +263,7 @@ class DocumentExporter:
             f = self.doc.figure(b.ref)
             if f is None or f.kind == "page":
                 continue
-            cap = figure_caption(f) or f.id
+            cap = figure_caption(f, self.md.labels.figure_prefix) or f.id
             target = file_of_block.get(b.id)
             entry = f"[{_esc(cap)}]({self.link(target)})" if target else _esc(cap)
             fig_lines.append(f"- {entry} — p. {f.page}")
@@ -273,7 +276,7 @@ class DocumentExporter:
             t = self.doc.table(b.ref)
             if t is None:
                 continue
-            cap = table_caption(t) or t.id
+            cap = table_caption(t, self.md.labels.table_prefix) or t.id
             target = file_of_block.get(b.id)
             entry = f"[{_esc(cap)}]({self.link(target)})" if target else _esc(cap)
             tbl_lines.append(f"- {entry} — p. {format_page_list(self._block_pages(b))}")
@@ -313,7 +316,7 @@ class DocumentExporter:
                 if f is None:
                     continue
                 d = f.description
-                figs[f.id] = {"number": f.number, "caption": figure_caption(f), "page": f.page, "bbox": f.bbox,
+                figs[f.id] = {"number": f.number, "caption": figure_caption(f, self.md.labels.figure_prefix), "page": f.page, "bbox": f.bbox,
                               "kind": f.kind, "image_type": f.image_type, "file": file_of.get(b.id),
                               "asset": f"{self.asset_dir}/{self.renderer.figure_asset_name(f)}" if f.asset else None,
                               "asset_sha256": f.asset_sha256, "embedded_text": f.embedded_text,
@@ -328,7 +331,7 @@ class DocumentExporter:
                 t = self.doc.table(b.ref)
                 if t is None:
                     continue
-                tables[t.id] = {"number": t.number, "caption": table_caption(t), "file": file_of.get(b.id),
+                tables[t.id] = {"number": t.number, "caption": table_caption(t, self.md.labels.table_prefix), "file": file_of.get(b.id),
                                 "parts": [p.model_dump() for p in t.parts], "rows": t.n_rows, "cols": t.n_cols,
                                 "header_rows": t.header_rows, "method": t.method, "confidence": t.confidence}
         return {"schema_version": self.doc.schema_version, "doc_id": self.doc.doc_id, "slug": self.slug,
@@ -351,7 +354,9 @@ def _cell(text: str) -> str:
 
 def doc_slug(doc: CanonicalDocument, used: set[str]) -> str:
     meta = doc.effective_metadata()
-    base = slugify(meta.doc_number or meta.title or doc.source.filename, 40, fallback="document")
+    stem = re.sub(r"\.pdf$", "", doc.source.filename, flags=re.I)
+    base = next((s for s in (slugify(x or "", 40, fallback="") for x in (meta.doc_number, meta.title, stem)) if s),
+                "document")
     slug = base
     n = 2
     while slug in used:

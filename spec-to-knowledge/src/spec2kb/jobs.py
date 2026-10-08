@@ -125,7 +125,7 @@ class JobManager:
     # -- API --------------------------------------------------------------------
     def submit(self, type_: str, doc_id: str, fn: Callable[[JobContext], dict[str, Any] | None],
                title: str = "", params: dict[str, Any] | None = None,
-               on_finish: Callable[[Job], None] | None = None) -> Job:
+               on_finish: Callable[[Job, str], None] | None = None) -> Job:
         with self._lock:
             active = self.active_by_doc.get(doc_id)
             if active and self.jobs[active].status in ("queued", "running"):
@@ -140,34 +140,38 @@ class JobManager:
         return job
 
     def _run(self, ctx: JobContext, fn: Callable[[JobContext], dict[str, Any] | None],
-             on_finish: Callable[[Job], None] | None) -> None:
+             on_finish: Callable[[Job, str], None] | None) -> None:
         job = ctx.job
         job.status = "running"
         job.started_at = utcnow()
         self._persist(job)
+        final: JobStatus = "failed"
         try:
             if ctx.cancelled():
                 raise Cancelled()
             job.result = fn(ctx) or {}
-            job.status = "done"
+            final = "done"
             job.progress.percent = 100.0
             job.progress.message = "완료"
         except Cancelled:
-            job.status = "cancelled"
+            final = "cancelled"
             job.error = "사용자가 작업을 취소했습니다."
         except Exception as exc:  # report every failure to the UI
             log.exception("job %s failed", job.id)
-            job.status = "failed"
+            final = "failed"
             job.error = f"{type(exc).__name__}: {exc}"
             job.log.append(traceback.format_exc(limit=8))
         finally:
-            job.finished_at = utcnow()
-            self._persist(job)
+            # update dependent state (document record) before the final status becomes visible,
+            # so that anyone polling the job never reads a stale document
             if on_finish is not None:
                 try:
-                    on_finish(job)
+                    on_finish(job, final)
                 except Exception:  # pragma: no cover
                     log.exception("on_finish failed for job %s", job.id)
+            job.finished_at = utcnow()
+            job.status = final
+            self._persist(job)
             with self._lock:
                 if self.active_by_doc.get(job.doc_id) == job.id:
                     self.active_by_doc.pop(job.doc_id, None)
@@ -211,7 +215,8 @@ class JobManager:
         end = time.monotonic() + timeout
         while time.monotonic() < end:
             job = self.jobs.get(job_id)
-            if job and job.status in ("done", "failed", "cancelled"):
+            if job and job.status in ("done", "failed", "cancelled") and \
+                    self.active_by_doc.get(job.doc_id) != job.id:
                 return job
             time.sleep(0.05)
         raise TimeoutError(f"job {job_id} did not finish within {timeout}s")

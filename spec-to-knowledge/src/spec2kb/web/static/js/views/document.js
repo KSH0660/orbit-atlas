@@ -76,7 +76,8 @@ async function renderSetup(root, doc, go) {
   function sel(path, label, choices, help) {
     const cur = get(path);
     const def = resolved(path);
-    const defLabel = (choices.find((c) => String(c[0]) === String(def)) || [def, String(def)])[1];
+    const defLabel = def === "" || def === null || def === undefined ? "서버 기본 Provider"
+      : (choices.find((c) => String(c[0]) === String(def)) || [def, String(def)])[1];
     const s = h("select", { "data-opt": path, onchange: (e) => {
       const raw = e.target.value;
       if (raw === "__default") set(path, undefined);
@@ -210,6 +211,7 @@ async function renderRun(root, doc, refresh, go) {
           try { await api.post(`/api/docs/${d.id}/process`); tick(); } catch (e) { toast(e.message, "error"); }
         } }, "변환 시작")));
     }
+    if (d.has_result) box.append(await partialPanel(d, tick));
     if ((d.jobs || []).length) {
       box.append(h("section", { class: "panel" }, h("h2", null, "작업 기록"),
         h("table", { class: "list" }, h("thead", null, h("tr", null, h("th", null, "작업"), h("th", null, "상태"), h("th", null, "시작"), h("th", null, "종료"), h("th", null, "메시지"))),
@@ -220,6 +222,35 @@ async function renderRun(root, doc, refresh, go) {
   }
   await tick();
   return () => clearTimeout(timer);
+}
+
+async function partialPanel(d, after) {
+  let figs = [];
+  try { figs = await api.get(`/api/docs/${d.id}/figures`); } catch { /* no result yet */ }
+  const failed = figs.filter((f) => f.status === "failed" && !f.reviewed);
+  const uncertain = figs.filter((f) => f.status === "uncertain" && !f.reviewed);
+  const range = h("input", { type: "text", placeholder: "예: 5-7, 12", style: { width: "200px" }, "data-testid": "partial-pages" });
+  const run = async (fn) => { try { await fn(); toast("작업을 시작했습니다.", "ok"); after(); } catch (e) { toast(e.message, "error"); } };
+  const parsePages = (txt) => {
+    const out = new Set();
+    for (const part of txt.split(/[\s,]+/).filter(Boolean)) {
+      const m = part.match(/^(\d+)(?:-(\d+))?$/);
+      if (!m) throw new Error(`페이지 형식이 올바르지 않습니다: ${part}`);
+      const a = Number(m[1]), b = Number(m[2] || m[1]);
+      for (let i = Math.min(a, b); i <= Math.max(a, b); i++) out.add(i);
+    }
+    if (!out.size) throw new Error("페이지를 입력하세요.");
+    return [...out];
+  };
+  const redo = (list) => api.post(`/api/docs/${d.id}/figures/redescribe`, { figure_ids: list.map((f) => f.id) });
+  return h("section", { class: "panel" }, h("h2", null, "부분 재처리"),
+    h("p", { class: "help" }, "문서 전체를 다시 돌리지 않고 일부만 다시 처리합니다. 사용자 수정 내용은 같은 위치의 항목에 다시 적용됩니다."),
+    h("div", { class: "row" }, h("span", null, "페이지"), range,
+      h("button", { "data-testid": "partial-run", onclick: () => run(() => api.post(`/api/docs/${d.id}/reprocess`, { pages: parsePages(range.value) })) }, "선택 페이지 다시 처리")),
+    h("div", { class: "row", style: { marginTop: "10px" } },
+      h("button", { disabled: !failed.length, onclick: () => run(() => redo(failed)) }, `실패한 그림 다시 해석 (${failed.length})`),
+      h("button", { disabled: !uncertain.length, onclick: () => run(() => redo(uncertain)) }, `검토 필요 그림 다시 해석 (${uncertain.length})`),
+      h("span", { class: "help" }, `그림 ${figs.length}개 · 실패 ${failed.length} · 검토 필요 ${uncertain.length}`)));
 }
 
 function kpi(label, value, cls = "") {

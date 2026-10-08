@@ -37,10 +37,10 @@ class TocCfg(_Cfg):
 
 class HeadingCfg(_Cfg):
     numbered_pattern: str = Field(
-        r"^(?P<num>\d{1,2}(?:\.\d{1,3}){0,5}|[A-Z](?:\.\d{1,3}){1,5})\.?\s+(?P<title>[A-Za-z(\"'][^\n]{0,200})$",
+        r"^(?P<num>\d{1,2}(?:\.\d{1,3}){0,5}|[A-Z](?:\.\d{1,3}){1,5})\.?\s+(?P<title>(?:[^\W\d_]|[(\"'])[^\n]{0,200})$",
         title="번호 제목 패턴", description="'4.1.2 Title' 형태의 번호 제목을 찾는 정규식. num, title 그룹이 필요합니다.")
     annex_pattern: str = Field(
-        r"^(?:Annex|ANNEX|Appendix|APPENDIX)\s+(?P<num>[A-Z])\b\s*(?P<title>.*)$",
+        r"^(?:Annex|ANNEX|Appendix|APPENDIX|부록)\s*(?P<num>[A-Z])\b\s*(?P<title>.*)$",
         title="부록 제목 패턴", description="'Annex A (informative) ...' 형태의 부록 제목 정규식.")
     require_emphasis: bool = Field(True, title="강조(굵게/큰 글씨) 필수", description="번호가 있어도 굵거나 본문보다 큰 글씨일 때만 제목으로 인정합니다. 목록·수치 오인식을 줄입니다.")
     emphasis_size_ratio: float = Field(1.08, title="큰 글씨 판정 배율", description="본문 글자 크기 대비 이 배율 이상이면 '큰 글씨'로 봅니다.")
@@ -59,13 +59,13 @@ class ParagraphCfg(_Cfg):
     merge_across_pages: bool = Field(True, title="페이지 넘김 문단 연결", description="페이지 끝에서 끊긴 문장이 다음 페이지 소문자로 이어지면 한 문단으로 합칩니다.")
     bullet_chars: str = Field("•●▪■◦○–—*·-", title="글머리 기호 문자")
     enum_pattern: str = Field(r"^(\(?[a-z]\)|\(?[ivx]{1,4}\)|\(?\d{1,2}\))\s+", title="번호 목록 패턴", description="'a)', '(1)', 'ii)' 형태의 목록 항목 정규식.")
-    note_pattern: str = Field(r"^(NOTES?|Note)(\s+\d+)?\s*[:.]?\s", title="NOTE 패턴", description="'NOTE 1 ...' 처럼 주석 문단을 인식하는 정규식.")
+    note_pattern: str = Field(r"^(NOTES?|Note|참고|주)(\s*\d+)?\s*[:.)]?\s", title="NOTE 패턴", description="'NOTE 1 ...' 처럼 주석 문단을 인식하는 정규식.")
 
 
 class TableCfg(_Cfg):
     enabled: bool = Field(True, title="표 추출")
     strategy: Literal["lines", "lines+text"] = Field("lines", title="표 감지 방식", description="lines = 괘선 기반(JEDEC 권장), lines+text = 괘선이 없는 표도 캡션 기준으로 텍스트 정렬 분석.")
-    caption_pattern: str = Field(r"^Table\s+(?P<num>[A-Z]?\d+(?:[.\-]\d+)*)\s*(?:[—–:\-.]\s*)?(?P<title>.*)$", title="표 캡션 패턴")
+    caption_pattern: str = Field(r"^(?:Table|표)\s*(?P<num>(?:[A-Z][.\-]?)?\d+(?:[.\-]\d+)*[a-z]?)\s*(?:[—–:\-.]\s*)?(?P<title>.*)$", title="표 캡션 패턴")
     caption_position: Literal["above", "below", "auto"] = Field("above", title="캡션 위치", description="JEDEC은 표 위에 캡션이 있습니다.")
     caption_max_distance: float = Field(45, title="캡션-표 최대 거리(pt)")
     min_rows: int = Field(2, title="최소 행 수")
@@ -81,7 +81,7 @@ class TableCfg(_Cfg):
 
 class FigureCfg(_Cfg):
     enabled: bool = Field(True, title="그림 추출")
-    caption_pattern: str = Field(r"^(?:Figure|Fig\.)\s+(?P<num>[A-Z]?\d+(?:[.\-]\d+)*)\s*(?:[—–:\-.]\s*)?(?P<title>.*)$", title="그림 캡션 패턴")
+    caption_pattern: str = Field(r"^(?:Figure|Fig\.|그림)\s*(?P<num>(?:[A-Z][.\-]?)?\d+(?:[.\-]\d+)*[a-z]?)\s*(?:[—–:\-.]\s*)?(?P<title>.*)$", title="그림 캡션 패턴")
     caption_position: Literal["below", "above", "auto"] = Field("below", title="캡션 위치", description="JEDEC은 그림 아래에 캡션이 있습니다.")
     caption_max_distance: float = Field(90, title="캡션-그림 최대 거리(pt)")
     cluster_gap: float = Field(14, title="도형 묶음 간격(pt)", description="선·사각형·곡선을 하나의 그림으로 묶는 최대 간격.")
@@ -174,7 +174,7 @@ def _rule(id, label, priority, caption_regex, text_regex, min_hits, prompt, sect
 
 def default_image_types() -> list[ImageTypeRule]:
     return [
-        _rule("timing_diagram", "Timing diagram", 50, r"(?i)timing|waveform|burst|sequence",
+        _rule("timing_diagram", "Timing diagram", 50, r"(?i)timing|waveform|burst|sequence|타이밍|파형",
               r"\b(CK_?[tc]|CLK\w*|DQS\w*|DQ\[?|T\d{1,2}\b|t[A-Z][A-Z0-9]{1,}\w*|CMD|CA\[)", 3,
               "This is a timing diagram. List every signal row from top to bottom, then the "
               "order of events along the time axis (commands, clock edges, data beats), then "
@@ -182,32 +182,32 @@ def default_image_types() -> list[ImageTypeRule]:
               "as printed.",
               [("signals", "Signals"), ("sequence", "Event sequence"),
                ("parameters", "Timing parameters"), ("notes", "Notes")]),
-        _rule("state_diagram", "State diagram", 40, r"(?i)state|transition|flow ?chart|flow diagram",
+        _rule("state_diagram", "State diagram", 40, r"(?i)state|transition|flow ?chart|flow diagram|상태|천이|흐름도|순서도",
               r"(?i)\b(idle|active|state|entry|exit)\b", 2,
               "This is a state diagram or flow chart. List every state (node), then every "
               "transition as 'FROM -> TO: trigger/condition', exactly as labeled.",
               [("states", "States"), ("transitions", "Transitions"), ("notes", "Notes")]),
-        _rule("pinout", "Pinout / ball map", 45, r"(?i)\bball\b|pin ?out|pin assignment|footprint|ballout",
+        _rule("pinout", "Pinout / ball map", 45, r"(?i)\bball\b|pin ?out|pin assignment|footprint|ballout|핀 ?배치|볼 ?배치|볼맵",
               r"\b[A-Z]\d{1,2}\b", 6,
               "This is a pinout or ball assignment map. Describe the grid (rows, columns, view "
               "side) and list each readable ball/pin position with its signal name.",
               [("layout", "Layout"), ("pins", "Pins"), ("notes", "Notes")]),
-        _rule("block_diagram", "Block diagram", 30, r"(?i)block|architecture|system|topology|overview|connection",
+        _rule("block_diagram", "Block diagram", 30, r"(?i)block|architecture|system|topology|overview|connection|블록|구성도|시스템|아키텍처|연결",
               "", 1,
               "This is a block diagram. List every block/component, then every connection "
               "or signal path between blocks with its label (bus names, voltages, protocols).",
               [("components", "Components"), ("connections", "Connections"), ("notes", "Notes")]),
-        _rule("chart", "Chart / graph", 35, r"(?i)graph|chart|plot|curve|\bvs\.?\b|versus|derating|eye",
+        _rule("chart", "Chart / graph", 35, r"(?i)graph|chart|plot|curve|\bvs\.?\b|versus|derating|eye|그래프|차트|곡선",
               "", 1,
               "This is a chart. Describe the axes (quantity and unit), each data series, and the "
               "key points (limits, crossings, maxima) with values exactly as printed.",
               [("axes", "Axes"), ("series", "Series"), ("key_points", "Key points")]),
         _rule("package_drawing", "Package / mechanical drawing", 35,
-              r"(?i)package|outline|dimension|mechanical|drawing|land pattern", "", 1,
+              r"(?i)package|outline|dimension|mechanical|drawing|land pattern|패키지|외형|치수|기구", "", 1,
               "This is a mechanical drawing. Describe the views shown and list every dimension "
               "with its symbol, value, tolerance and unit exactly as printed.",
               [("views", "Views"), ("dimensions", "Dimensions"), ("notes", "Notes")]),
-        _rule("table_image", "Table image", 20, r"(?i)^table", "", 1,
+        _rule("table_image", "Table image", 20, r"(?i)^table|^표", "", 1,
               "This image contains a table. Transcribe the column headers and every row "
               "exactly, one row per item as 'col1 | col2 | ...'.",
               [("columns", "Columns"), ("rows", "Rows")]),
@@ -239,6 +239,8 @@ class VisionCfg(_Cfg):
 # ---------------------------------------------------------------------------
 
 class LabelsCfg(_Cfg):
+    figure_prefix: str = Field("Figure", title="그림 캡션 접두어", description="Markdown 캡션 표기. 예: Figure → 'Figure 3 — 제목', 그림 → '그림 3 — 제목'.")
+    table_prefix: str = Field("Table", title="표 캡션 접두어")
     ai_description: str = Field("AI description", title="AI 설명 제목")
     unverified: str = Field("auto-generated — verify against the original figure", title="검증 안내 문구")
     uncertain: str = Field("Uncertain", title="불확실 항목 제목")

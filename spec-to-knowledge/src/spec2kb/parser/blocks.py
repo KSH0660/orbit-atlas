@@ -129,10 +129,12 @@ class BlockRules:
             # reject value-like matches such as "1.2 V" or "3 ns typical"
             if re.match(r"^[A-Za-zµΩ°%/]{1,4}(\s|$)", title) and not line.bold and line.size < self.body * h.emphasis_size_ratio:
                 return None
-            if not re.search(r"[A-Za-z]{2}", title):
+            if not re.search(r"[^\W\d_]{2}", title):
                 return None
             return {**base, "kind": "numbered", "num": m.group("num").rstrip("."), "title": title}
-        if h.unnumbered and text[:1].isupper() and not text.endswith((".", ",", ";")):
+        first = text[:1]
+        if h.unnumbered and (first.isupper() or (first.isalpha() and not first.isascii())) \
+                and not text.endswith((".", ",", ";", "다.")):
             words = text.split()
             emph = (line.bold and line.size >= self.body * h.unnumbered_size_ratio) or \
                    line.size >= self.body * (h.unnumbered_size_ratio + 0.2)

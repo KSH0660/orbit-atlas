@@ -138,3 +138,38 @@ def test_reading_order_and_ids_stable(parse_sample):
     assert pages == sorted(pages)
     table_refs = [b.ref for b in doc.blocks if b.type == "table"]
     assert table_refs == ["tbl-1", "tbl-2", "tbl-3"]
+
+
+def test_korean_frame_and_ocr_text_layer(parse_sample, truth):
+    """Korean headings/captions, a page frame and a 'searchable' scan (image + invisible OCR text)."""
+    doc, *_ = parse_sample("korean_spec", "customer")
+    t = truth("korean_spec")
+    heads = [[b.number, b.text, b.level] for b in doc.blocks if b.type == "heading"]
+    assert heads == t["headings"]
+    tbl = doc.tables[0]
+    assert (tbl.number, tbl.title) == ("1", "전원 요구사항")
+    assert _filled(tbl) == t["tables"][0]["rows"]
+    figs = [f for f in doc.figures]
+    assert [(f.number, f.title, f.kind) for f in figs] == [("1", "시스템 블록도", "vector")]
+    for label in t["figures"][0]["labels"]:
+        assert label in figs[0].embedded_text
+    # the in-text reference "그림 1은 ..." stays a paragraph
+    assert any(b.type == "paragraph" and b.text.startswith("그림 1은") for b in doc.blocks)
+    # page frame and the scan image behind the OCR text layer are not figures
+    assert doc.page(3).kind == "text"
+    assert any("테두리" in m for m in doc.page(1).messages)
+    text = " ".join(b.text for b in doc.blocks) + " ".join(c.text for c in tbl.cells)
+    for v in t["values"]:
+        assert v in text, v
+    assert not [i for i in doc.issues if i.severity != "info" and i.code not in ("table_text_fallback",)]
+
+
+def test_caption_patterns():
+    import re
+    from spec2kb.profiles.model import FigureCfg, TableCfg
+    t, f = re.compile(TableCfg().caption_pattern), re.compile(FigureCfg().caption_pattern)
+    cases = {"Table 3a — Speed bins": "3a", "Figure A.1 — Annex": "A.1", "Figure B-2: Z": "B-2", "표 1. 전원": "1",
+             "그림 12 블록도": "12"}
+    for text, num in cases.items():
+        m = t.match(text) or f.match(text)
+        assert m and m.group("num") == num, text

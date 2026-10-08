@@ -1,0 +1,1070 @@
+{
+  "$defs": {
+    "Block": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "heading",
+            "paragraph",
+            "list_item",
+            "note",
+            "table",
+            "figure"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bbox"
+        },
+        "text": {
+          "default": "",
+          "title": "Text",
+          "type": "string"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "heading level (1 = top)",
+          "title": "Level"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "heading number such as '4.1.2' or 'A.1'",
+          "title": "Number"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "list marker such as '\u2022', 'a)' or note label",
+          "title": "Label"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "table/figure id for table and figure blocks",
+          "title": "Ref"
+        },
+        "font_size": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Font Size"
+        },
+        "bold": {
+          "default": false,
+          "title": "Bold",
+          "type": "boolean"
+        },
+        "origin": {
+          "default": "text_layer",
+          "enum": [
+            "text_layer",
+            "ocr",
+            "vision",
+            "user"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 1.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "continued": {
+          "default": false,
+          "description": "paragraph continues a block from the previous page",
+          "title": "Continued",
+          "type": "boolean"
+        },
+        "pages": {
+          "description": "all pages the block spans when merged across pages",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Pages",
+          "type": "array"
+        },
+        "hints": {
+          "additionalProperties": true,
+          "description": "parser hints (heading candidate info) used by document-level passes",
+          "title": "Hints",
+          "type": "object"
+        },
+        "md_override": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "user-edited Markdown that replaces the generated output",
+          "title": "Md Override"
+        },
+        "edited_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Edited At"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "page"
+      ],
+      "title": "Block",
+      "type": "object"
+    },
+    "Cell": {
+      "properties": {
+        "row": {
+          "title": "Row",
+          "type": "integer"
+        },
+        "col": {
+          "title": "Col",
+          "type": "integer"
+        },
+        "text": {
+          "default": "",
+          "title": "Text",
+          "type": "string"
+        },
+        "rowspan": {
+          "default": 1,
+          "title": "Rowspan",
+          "type": "integer"
+        },
+        "colspan": {
+          "default": 1,
+          "title": "Colspan",
+          "type": "integer"
+        },
+        "header": {
+          "default": false,
+          "title": "Header",
+          "type": "boolean"
+        },
+        "bbox": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bbox"
+        }
+      },
+      "required": [
+        "row",
+        "col"
+      ],
+      "title": "Cell",
+      "type": "object"
+    },
+    "DescriptionSection": {
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "title"
+      ],
+      "title": "DescriptionSection",
+      "type": "object"
+    },
+    "DocMetadata": {
+      "properties": {
+        "title": {
+          "default": "",
+          "title": "Title",
+          "type": "string"
+        },
+        "doc_number": {
+          "default": "",
+          "title": "Doc Number",
+          "type": "string"
+        },
+        "revision": {
+          "default": "",
+          "title": "Revision",
+          "type": "string"
+        },
+        "date": {
+          "default": "",
+          "title": "Date",
+          "type": "string"
+        },
+        "publisher": {
+          "default": "",
+          "title": "Publisher",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "extra": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Extra",
+          "type": "object"
+        }
+      },
+      "title": "DocMetadata",
+      "type": "object"
+    },
+    "Figure": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Number"
+        },
+        "caption": {
+          "default": "",
+          "title": "Caption",
+          "type": "string"
+        },
+        "title": {
+          "default": "",
+          "title": "Title",
+          "type": "string"
+        },
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Bbox",
+          "type": "array"
+        },
+        "kind": {
+          "default": "vector",
+          "enum": [
+            "raster",
+            "vector",
+            "mixed",
+            "inferred",
+            "page"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "image_type": {
+          "default": "generic",
+          "title": "Image Type",
+          "type": "string"
+        },
+        "image_type_source": {
+          "default": "default",
+          "enum": [
+            "rule",
+            "llm",
+            "user",
+            "default"
+          ],
+          "title": "Image Type Source",
+          "type": "string"
+        },
+        "asset": {
+          "default": "",
+          "description": "relative path of the PNG inside the document asset folder",
+          "title": "Asset",
+          "type": "string"
+        },
+        "asset_sha256": {
+          "default": "",
+          "title": "Asset Sha256",
+          "type": "string"
+        },
+        "width_px": {
+          "default": 0,
+          "title": "Width Px",
+          "type": "integer"
+        },
+        "height_px": {
+          "default": 0,
+          "title": "Height Px",
+          "type": "integer"
+        },
+        "embedded_text": {
+          "description": "text-layer lines inside the figure region",
+          "items": {
+            "type": "string"
+          },
+          "title": "Embedded Text",
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VisionResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "description_override": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "user-written Markdown replacing the AI description",
+          "title": "Description Override"
+        },
+        "prompt_extra": {
+          "default": "",
+          "description": "reviewer instructions appended to the vision prompt for this figure",
+          "title": "Prompt Extra",
+          "type": "string"
+        },
+        "md_override": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Md Override"
+        },
+        "edited_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Edited At"
+        }
+      },
+      "required": [
+        "id",
+        "page",
+        "bbox"
+      ],
+      "title": "Figure",
+      "type": "object"
+    },
+    "Issue": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Page"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "block / table / figure id",
+          "title": "Ref"
+        },
+        "file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File"
+        },
+        "source": {
+          "default": "validator",
+          "enum": [
+            "parser",
+            "vision",
+            "validator",
+            "export"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "status": {
+          "default": "open",
+          "enum": [
+            "open",
+            "ignored",
+            "resolved"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "severity",
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "PageInfo": {
+      "properties": {
+        "number": {
+          "title": "Number",
+          "type": "integer"
+        },
+        "width": {
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "title": "Height",
+          "type": "number"
+        },
+        "kind": {
+          "default": "text",
+          "enum": [
+            "text",
+            "scanned",
+            "toc",
+            "blank",
+            "cover"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "ok",
+            "warning",
+            "error",
+            "skipped",
+            "pending"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "char_count": {
+          "default": 0,
+          "title": "Char Count",
+          "type": "integer"
+        },
+        "removed_lines": {
+          "description": "header/footer lines removed from this page",
+          "items": {
+            "type": "string"
+          },
+          "title": "Removed Lines",
+          "type": "array"
+        },
+        "source_text": {
+          "default": "",
+          "description": "raw text-layer content (after header/footer removal) used for validation",
+          "title": "Source Text",
+          "type": "string"
+        },
+        "processed_at": {
+          "default": "",
+          "title": "Processed At",
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Messages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "number",
+        "width",
+        "height"
+      ],
+      "title": "PageInfo",
+      "type": "object"
+    },
+    "ProcessingInfo": {
+      "properties": {
+        "generator": {
+          "default": "",
+          "title": "Generator",
+          "type": "string"
+        },
+        "profile_id": {
+          "default": "",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "profile_hash": {
+          "default": "",
+          "title": "Profile Hash",
+          "type": "string"
+        },
+        "started_at": {
+          "default": "",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "default": "",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_s": {
+          "default": 0.0,
+          "title": "Duration S",
+          "type": "number"
+        },
+        "pages_processed": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Pages Processed",
+          "type": "array"
+        },
+        "vision_provider": {
+          "default": "",
+          "title": "Vision Provider",
+          "type": "string"
+        },
+        "vision_model": {
+          "default": "",
+          "title": "Vision Model",
+          "type": "string"
+        },
+        "stats": {
+          "additionalProperties": true,
+          "title": "Stats",
+          "type": "object"
+        }
+      },
+      "title": "ProcessingInfo",
+      "type": "object"
+    },
+    "SourceInfo": {
+      "properties": {
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "page_count": {
+          "title": "Page Count",
+          "type": "integer"
+        },
+        "pdf_metadata": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Pdf Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "filename",
+        "sha256",
+        "size_bytes",
+        "page_count"
+      ],
+      "title": "SourceInfo",
+      "type": "object"
+    },
+    "Table": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Number"
+        },
+        "caption": {
+          "default": "",
+          "title": "Caption",
+          "type": "string"
+        },
+        "title": {
+          "default": "",
+          "title": "Title",
+          "type": "string"
+        },
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Bbox",
+          "type": "array"
+        },
+        "parts": {
+          "description": "one entry per page for continued tables",
+          "items": {
+            "$ref": "#/$defs/TablePart"
+          },
+          "title": "Parts",
+          "type": "array"
+        },
+        "n_rows": {
+          "title": "N Rows",
+          "type": "integer"
+        },
+        "n_cols": {
+          "title": "N Cols",
+          "type": "integer"
+        },
+        "header_rows": {
+          "default": 1,
+          "title": "Header Rows",
+          "type": "integer"
+        },
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/Cell"
+          },
+          "title": "Cells",
+          "type": "array"
+        },
+        "method": {
+          "default": "lines",
+          "enum": [
+            "lines",
+            "text",
+            "vision",
+            "user"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 1.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "relative asset path of the rendered table image",
+          "title": "Snapshot"
+        },
+        "md_override": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Md Override"
+        },
+        "edited_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Edited At"
+        }
+      },
+      "required": [
+        "id",
+        "page",
+        "bbox",
+        "n_rows",
+        "n_cols"
+      ],
+      "title": "Table",
+      "type": "object"
+    },
+    "TablePart": {
+      "properties": {
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        },
+        "bbox": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Bbox",
+          "type": "array"
+        },
+        "rows": {
+          "title": "Rows",
+          "type": "integer"
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Snapshot"
+        }
+      },
+      "required": [
+        "page",
+        "bbox",
+        "rows"
+      ],
+      "title": "TablePart",
+      "type": "object"
+    },
+    "VisionResult": {
+      "properties": {
+        "status": {
+          "default": "pending",
+          "enum": [
+            "ok",
+            "uncertain",
+            "failed",
+            "skipped",
+            "pending"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "image_type": {
+          "default": "generic",
+          "title": "Image Type",
+          "type": "string"
+        },
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/DescriptionSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "uncertain": {
+          "description": "items the model marked as unclear",
+          "items": {
+            "type": "string"
+          },
+          "title": "Uncertain",
+          "type": "array"
+        },
+        "raw": {
+          "default": "",
+          "title": "Raw",
+          "type": "string"
+        },
+        "structured": {
+          "default": true,
+          "title": "Structured",
+          "type": "boolean"
+        },
+        "provider": {
+          "default": "",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "default": "",
+          "title": "Model",
+          "type": "string"
+        },
+        "prompt_hash": {
+          "default": "",
+          "title": "Prompt Hash",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "",
+          "title": "Created At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "default": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "cached": {
+          "default": false,
+          "title": "Cached",
+          "type": "boolean"
+        },
+        "error": {
+          "default": "",
+          "title": "Error",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "title": "VisionResult",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "doc_id": {
+      "title": "Doc Id",
+      "type": "string"
+    },
+    "slug": {
+      "title": "Slug",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceInfo"
+    },
+    "metadata": {
+      "$ref": "#/$defs/DocMetadata"
+    },
+    "metadata_override": {
+      "additionalProperties": true,
+      "description": "user edits of metadata fields",
+      "title": "Metadata Override",
+      "type": "object"
+    },
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/PageInfo"
+      },
+      "title": "Pages",
+      "type": "array"
+    },
+    "blocks": {
+      "items": {
+        "$ref": "#/$defs/Block"
+      },
+      "title": "Blocks",
+      "type": "array"
+    },
+    "tables": {
+      "items": {
+        "$ref": "#/$defs/Table"
+      },
+      "title": "Tables",
+      "type": "array"
+    },
+    "figures": {
+      "items": {
+        "$ref": "#/$defs/Figure"
+      },
+      "title": "Figures",
+      "type": "array"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "processing": {
+      "$ref": "#/$defs/ProcessingInfo"
+    }
+  },
+  "required": [
+    "doc_id",
+    "slug",
+    "source"
+  ],
+  "title": "CanonicalDocument",
+  "type": "object"
+}

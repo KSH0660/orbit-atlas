@@ -86,8 +86,11 @@ def _is_white(color: Any) -> bool:
 
 
 def collect_graphics(page: Any, page_w: float, page_h: float, top_band: float, bottom_band: float,
-                     exclude: Sequence[list[float]]) -> list[Graphic]:
+                     exclude: Sequence[list[float]], text_heavy: bool = False) -> tuple[list[Graphic], list[str]]:
+    """Graphics that can form figures. Page frames, backgrounds and (on text pages) full-page images
+    behind the text are ignored; their kinds are returned as notes."""
     out: list[Graphic] = []
+    notes: list[str] = []
 
     def excluded(x0, top, x1, bottom) -> bool:
         for b in exclude:
@@ -101,7 +104,14 @@ def collect_graphics(page: Any, page_w: float, page_h: float, top_band: float, b
             return
         w, h = x1 - x0, bottom - top
         if w >= 0.9 * page_w and h >= 0.9 * page_h:
+            notes.append("page_background")
             return  # page background / border
+        if kind == "rect" and w >= 0.75 * page_w and h >= 0.5 * page_h:
+            notes.append("page_frame")
+            return  # frame drawn around the text body
+        if kind == "image" and text_heavy and w * h >= 0.6 * page_w * page_h:
+            notes.append("background_image")
+            return  # scanned page image behind an OCR text layer, or a full-page background
         if kind != "image" and (bottom <= top_band or top >= bottom_band):
             return  # header / footer rules
         if excluded(x0, top, x1, bottom):
@@ -120,7 +130,7 @@ def collect_graphics(page: Any, page_w: float, page_h: float, top_band: float, b
         if float(im["x1"]) - float(im["x0"]) < 3 or float(im["bottom"]) - float(im["top"]) < 3:
             continue
         add(im, "image")
-    return out
+    return out, sorted(set(notes))
 
 
 def cluster_graphics(objs: list[Graphic], gap: float) -> list[FigureCandidate]:
@@ -181,11 +191,16 @@ def merge_overlapping(cands: list[FigureCandidate], gap: float) -> list[FigureCa
     return cands
 
 
+def is_prose(ln: Line, body_width: float) -> bool:
+    """A full-width sentence line: never part of a drawing's labels."""
+    return ln.width > 0.7 * body_width and len(ln.text.split()) >= 8
+
+
 def attach_labels(cand: FigureCandidate, lines: list[Line], body_width: float, taken: set[int]) -> None:
     """Assign text lines that belong to the drawing (labels, markers, signal names)."""
     for _ in range(2):
         for ln in lines:
-            if id(ln) in taken:
+            if id(ln) in taken or is_prose(ln, body_width):
                 continue
             inside = (ln.x0 >= cand.x0 - 4 and ln.x1 <= cand.x1 + 4 and
                       ln.top >= cand.top - 4 and ln.bottom <= cand.bottom + 4)

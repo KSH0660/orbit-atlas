@@ -56,17 +56,17 @@ def heading_text(b: Block, profile: Profile) -> str:
     return b.text.strip()
 
 
-def table_caption(t: Table) -> str:
+def table_caption(t: Table, prefix: str = "Table") -> str:
     if t.number:
-        return f"Table {t.number} — {t.title}".rstrip(" —") if t.title else f"Table {t.number}"
+        return f"{prefix} {t.number} — {t.title}".rstrip(" —") if t.title else f"{prefix} {t.number}"
     return t.caption or ""
 
 
-def figure_caption(f: Figure) -> str:
+def figure_caption(f: Figure, prefix: str = "Figure") -> str:
     if f.kind == "page":
         return f.title
     if f.number:
-        return f"Figure {f.number} — {f.title}".rstrip(" —") if f.title else f"Figure {f.number}"
+        return f"{prefix} {f.number} — {f.title}".rstrip(" —") if f.title else f"{prefix} {f.number}"
     return f.caption or f.title or ""
 
 
@@ -185,7 +185,7 @@ class MarkdownRenderer:
         if t.md_override is not None:
             return t.md_override.strip()
         parts: list[str] = []
-        cap = table_caption(t)
+        cap = table_caption(t, self.labels.table_prefix)
         if cap:
             if self.md.source_refs == "inline":
                 cap = f"{cap} ({self.labels.page} {self._pages_label(t)})"
@@ -201,7 +201,7 @@ class MarkdownRenderer:
         if f.md_override is not None:
             return f.md_override.strip()
         parts: list[str] = []
-        cap = figure_caption(f)
+        cap = figure_caption(f, self.labels.figure_prefix)
         alt = cap.replace("[", "(").replace("]", ")").replace("\n", " ") or f.id
         if f.asset:
             parts.append(f"![{alt}]({self.asset_path(self.figure_asset_name(f))})")

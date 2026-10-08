@@ -47,7 +47,7 @@ def figure_target_text(doc: CanonicalDocument, fig_id: str, profile: Profile) ->
         return ""
     if f.md_override is not None:
         return markdown_to_plain(f.md_override)
-    parts = [figure_caption(f)]
+    parts = [figure_caption(f, profile.markdown.labels.figure_prefix)]
     if profile.markdown.include_embedded_text:
         parts += f.embedded_text
     return "\n".join(parts)

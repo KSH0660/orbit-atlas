@@ -13,7 +13,8 @@ from ..profiles.model import Profile
 from ..schema import Block, Cell, Figure, Issue, PageInfo, Table, TablePart, utcnow
 from ..util import atomic_write_bytes, sha256_bytes, short_hash, slugify
 from .blocks import BlockRules, TextBlock, block_text, build_text_blocks, merge_column_continuations
-from .figures import FigureCandidate, attach_labels, cluster_graphics, collect_graphics, merge_overlapping
+from .figures import (FigureCandidate, attach_labels, cluster_graphics, collect_graphics, is_prose,
+                      merge_overlapping)
 from .layout import (Line, assign_columns, build_lines, find_gutter, is_furniture, looks_like_toc,
                      reading_order_key_factory, words_from_page)
 from .pdfdoc import PdfDoc
@@ -108,9 +109,14 @@ def find_captions(lines: list[Line], pattern: str, cont_pattern: str, kind: str,
         m = rx.match(ln.text.strip())
         if not m:
             continue
-        rest = ln.text.strip()[m.end("num"):].lstrip()
+        raw_rest = ln.text.strip()[m.end("num"):]
+        rest = raw_rest.lstrip()
+        if raw_rest[:1].isalpha():
+            continue  # text glued to the number is an in-text reference ("그림 1은 ...", "표 2에서 ...")
         has_sep = rest[:1] in ("—", "–", ":", "-", ".", "|") or rest == ""
-        centered = abs(ln.center_x - body_c) < 0.06 * body_w and ln.width < 0.9 * body_w
+        left_gap, right_gap = ln.x0 - body_x0, body_x1 - ln.x1
+        centered = (abs(ln.center_x - body_c) < 0.06 * body_w and ln.width < 0.9 * body_w
+                    and left_gap > 0.04 * body_w and right_gap > 0.04 * body_w)
         if not (has_sep or ln.bold or centered):
             continue  # an in-text reference such as "Table 1 lists ..."
         cap_lines = [ln]
@@ -286,8 +292,13 @@ def parse_page(ctx: DocContext, number: int) -> PageResult:
         figures: list[FigureCandidate] = []
         if pcfg.figures.enabled:
             strong = [t.bbox for t in tables if t.caption is not None]
-            graphics = collect_graphics(page, page_w, page_h, page_h * pcfg.header_footer.top_ratio,
-                                        page_h * (1 - pcfg.header_footer.bottom_ratio), strong)
+            graphics, gnotes = collect_graphics(page, page_w, page_h, page_h * pcfg.header_footer.top_ratio,
+                                                page_h * (1 - pcfg.header_footer.bottom_ratio), strong,
+                                                text_heavy=content_chars >= 200)
+            if "background_image" in gnotes:
+                info.messages.append("본문 뒤의 전면 이미지(스캔 원본 등)는 그림에서 제외하고 텍스트 레이어를 사용했습니다.")
+            if "page_frame" in gnotes:
+                info.messages.append("페이지 테두리 사각형은 그림에서 제외했습니다.")
             figures = merge_overlapping(cluster_graphics(graphics, pcfg.figures.cluster_gap), 2.0)
             label_pool = [ln for ln in content_lines
                           if not any(_center_in(ln, b) for b in strong) and "caption" not in ln.tags
@@ -378,7 +389,10 @@ def parse_page(ctx: DocContext, number: int) -> PageResult:
                 dominated = any(t.caption is None and _overlap_ratio(fc.bbox, t.bbox) >= 0.8 and
                                 t.n_rows >= pcfg.tables.min_rows and t.n_cols >= pcfg.tables.min_cols
                                 for t in tables)
-                if keep and not dominated:
+                # decoration (watermark, shading, frame) spanning running text is not a figure
+                prose_inside = sum(1 for ln in content_lines if is_prose(ln, body_w) and
+                                   _overlap_ratio(ln.bbox, fc.bbox) >= 0.5)
+                if keep and not dominated and prose_inside < 3:
                     kept_figs.append(fc)
                 else:
                     for ln in fc.labels:

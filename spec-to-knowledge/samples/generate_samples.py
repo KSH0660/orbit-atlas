@@ -71,7 +71,7 @@ class SpecWriter:
     def __init__(self, path: Path, pagesize, header: str, footer_fmt: str,
                  margins=(72, 72, 72, 72), body_size=10.0):
         self.path = path
-        self.c = canvas.Canvas(str(path), pagesize=pagesize)
+        self.c = canvas.Canvas(str(path), pagesize=pagesize, invariant=1)
         self.W, self.H = pagesize
         self.ml, self.mr, self.mt, self.mb = margins
         self.header = header
@@ -786,7 +786,7 @@ def build_scanned(out: Path) -> None:
     # slight noise like a scan
     for i in range(0, img.width, 37):
         d.point((i, (i * 7) % img.height), fill=180)
-    c = canvas.Canvas(str(out), pagesize=LETTER)
+    c = canvas.Canvas(str(out), pagesize=LETTER, invariant=1)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
@@ -798,12 +798,121 @@ def build_scanned(out: Path) -> None:
         "values": [], "signals": []}, indent=2) + "\n", encoding="utf-8")
 
 
+# ---------------------------------------------------------------------------
+# sample 4: Korean customer spec with a page frame and an OCR'd scan page
+# ---------------------------------------------------------------------------
+
+KO_FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
+
+
+def build_korean(out: Path) -> bool:
+    if not os.path.exists(KO_FONT):
+        print("WARNING: Korean font not found, skipping korean_spec.pdf")
+        return False
+    pdfmetrics.registerFont(TTFont("KO", KO_FONT, subfontIndex=0))
+    W, H = A4
+    c = canvas.Canvas(str(out), pagesize=A4, invariant=1)
+    truth = {"headings": [], "tables": [], "figures": [], "page_count": 3}
+    ml = 64
+
+    def text(x, y, s, size=10.0, font="KO", invisible=False):
+        t = c.beginText(x, y)
+        t.setFont(font, size)
+        if invisible:
+            t.setTextRenderMode(3)
+        t.textLine(s)
+        c.drawText(t)
+
+    def header_footer(n):
+        c.setFont("KO", 8)
+        c.drawString(ml, H - 40, "사양서 번호 KCS-2026-007")
+        c.drawRightString(W - ml, H - 40, "대외비")
+        c.drawCentredString(W / 2, 30, f"- {n} -")
+
+    # page 1: frame + headings + ruled table
+    header_footer(1)
+    c.setLineWidth(1)
+    c.rect(40, 50, W - 80, H - 110)                     # frame around the body
+    text(ml, H - 100, "고객 요구 사양서 — 메모리 모듈", 20)
+    y = H - 150
+    text(ml, y, "1. 개요", 14); truth["headings"].append(["1", "개요", 1]); y -= 26
+    for ln in ["본 문서는 고객사 메모리 모듈의 전기적 요구사항을 정의한다. 공급 전압 VDD는 1.1 V이며",
+               "동작 온도 범위는 -40 °C 에서 95 °C 까지로 한다. 모든 수치는 예시 값이다."]:
+        text(ml, y, ln); y -= 14
+    y -= 12
+    text(ml, y, "1.1 적용 범위", 12); truth["headings"].append(["1.1", "적용 범위", 2]); y -= 22
+    text(ml, y, "본 요구사항은 모든 양산 제품에 적용하며, 시료 평가 결과는 30 일 이내에 제출한다."); y -= 30
+    c.setFont("KO", 10)
+    c.drawCentredString(W / 2, y, "표 1. 전원 요구사항"); y -= 10
+    rows = [["항목", "요구값", "비고"], ["VDD", "1.1 V ± 3%", "코어 전원"], ["VDDQ", "0.5 V", "I/O 전원"],
+            ["대기 전류", "≤ 5 mA", "25 °C 기준"]]
+    widths = [120, 140, 140]
+    x0 = (W - sum(widths)) / 2
+    for r, row in enumerate(rows):
+        x = x0
+        for wd, val in zip(widths, row):
+            c.rect(x, y - 20, wd, 20)
+            c.setFont("KO", 9)
+            c.drawCentredString(x + wd / 2, y - 14, val)
+            x += wd
+        y -= 20
+    truth["tables"].append({"number": "1", "title": "전원 요구사항", "rows": rows, "header_rows": 1, "merges": []})
+    c.showPage()
+
+    # page 2: figure with Korean caption
+    header_footer(2)
+    y = H - 100
+    text(ml, y, "2. 시스템 구성", 14); truth["headings"].append(["2", "시스템 구성", 1]); y -= 26
+    text(ml, y, "그림 1은 모듈과 호스트의 연결 구성을 나타낸다. 전원은 PMIC에서 공급된다."); y -= 30
+    boxes = [("호스트 SoC", ml + 10, y - 90), ("메모리 모듈", ml + 300, y - 90), ("PMIC", ml + 160, y - 170)]
+    for label, bx, by in boxes:
+        c.rect(bx, by, 120, 44)
+        c.setFont("KO", 9)
+        c.drawCentredString(bx + 60, by + 18, label)
+    arrow(c, ml + 130, y - 68, ml + 300, y - 68)
+    arrow(c, ml + 220, y - 126, ml + 70, y - 90)
+    c.setFont("KO", 8)
+    c.drawString(ml + 170, y - 62, "CA[6:0], CK_t")
+    c.setFont("KO", 10)
+    c.drawCentredString(W / 2, y - 190, "그림 1. 시스템 블록도")
+    truth["figures"].append({"number": "1", "title": "시스템 블록도", "page": 2,
+                             "labels": ["호스트 SoC", "메모리 모듈", "PMIC", "CA[6:0], CK_t"]})
+    c.showPage()
+
+    # page 3: scanned page image with an invisible OCR text layer (typical "searchable PDF")
+    scale = 110 / 72
+    img = Image.new("L", (int(W * scale), int(H * scale)), 250)
+    d = ImageDraw.Draw(img)
+    for i in range(0, img.height, 9):
+        d.line([(0, i), (img.width, i)], fill=244)        # scanner noise
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    c.drawImage(ImageReader(buf), 0, 0, W, H)
+    text(ml, H - 100, "3. 신뢰성 시험", 14, invisible=True)
+    truth["headings"].append(["3", "신뢰성 시험", 1])
+    text(ml, H - 130, "고온 동작 수명 시험은 125 °C 에서 1000 시간 동안 수행하며 불량률은 0.1 % 이하로 한다.",
+         invisible=True)
+    text(ml, H - 144, "시험 결과 보고서는 시험 종료 후 14 일 이내에 제출한다.", invisible=True)
+    truth["scan_text_layer_page"] = 3
+    truth["values"] = ["1.1 V", "125 °C", "1000 시간", "5 mA"]
+    c.showPage()
+    c.save()
+    out.with_suffix(".truth.json").write_text(json.dumps(truth, indent=2, ensure_ascii=False) + "\n",
+                                              encoding="utf-8")
+    return True
+
+
 def main(argv: list[str]) -> int:
     out_dir = Path(argv[1]) if len(argv) > 1 else HERE
     out_dir.mkdir(parents=True, exist_ok=True)
     build_jedec_like(out_dir / "jedec_like_spec.pdf")
     build_customer(out_dir / "customer_spec.pdf")
     build_scanned(out_dir / "scanned_addendum.pdf")
+    build_korean(out_dir / "korean_spec.pdf")
+    selftest = HERE.parent / "src" / "spec2kb" / "selftest" / "sample.pdf"
+    if out_dir == HERE and selftest.parent.exists():
+        selftest.write_bytes((out_dir / "jedec_like_spec.pdf").read_bytes())
     for p in sorted(out_dir.glob("*.pdf")):
         print(f"wrote {p} ({p.stat().st_size // 1024} KiB)")
     return 0

@@ -150,6 +150,10 @@ def create_app(settings: Settings | None = None, workspace: Workspace | None = N
     def page_view(doc_id: str, page: int) -> dict[str, Any]:
         return ws.page_view(doc_id, page)
 
+    @app.get("/api/docs/{doc_id}/figures")
+    def figures(doc_id: str) -> list[dict[str, Any]]:
+        return ws.figures_overview(doc_id)
+
     @app.get("/api/docs/{doc_id}/canonical")
     def canonical(doc_id: str) -> Response:
         doc = ws._canonical(doc_id)

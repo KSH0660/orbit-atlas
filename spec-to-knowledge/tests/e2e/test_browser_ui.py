@@ -41,10 +41,20 @@ def browser():
         b.close()
 
 
-def test_ui_end_to_end(browser, settings, workspace, samples):
+def test_ui_end_to_end(browser, settings, workspace, samples, tmp_path):
+    page = browser.new_page(viewport={"width": 1440, "height": 900}, accept_downloads=True)
+    page.set_default_timeout(60000)
+    try:
+        _flow(page, settings, workspace, samples)
+    except Exception:
+        page.screenshot(path=str(tmp_path / "failure.png"), full_page=True)
+        print(f"screenshot: {tmp_path / 'failure.png'}")
+        raise
+
+
+def _flow(page, settings, workspace, samples):
     app = create_app(settings, workspace)
     with ServerThread(app) as srv, ServerThread(create_mock_app()) as mock:
-        page = browser.new_page(viewport={"width": 1440, "height": 900}, accept_downloads=True)
         errors: list[str] = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)

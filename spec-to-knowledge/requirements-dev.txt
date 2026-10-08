@@ -1,0 +1,6 @@
+# Development / verification only (not needed on the production server).
+-r requirements.txt
+pytest==9.1.1
+reportlab==5.0.1      # regenerates samples/*.pdf
+mkdocs==1.6.1         # mkdocs build --strict check of exported knowledge bases
+playwright==1.63.0    # browser E2E test (needs a Chromium binary)

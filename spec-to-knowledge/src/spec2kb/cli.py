@@ -161,15 +161,42 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         return str(s.data_dir)
     check("Data directory writable", data_dir)
 
+    sample = Path(__file__).resolve().parent / "selftest" / "sample.pdf"
+
     def pdf_roundtrip() -> str:
         from .parser import PdfDoc
-        sample = Path(__file__).resolve().parents[2] / "samples" / "jedec_like_spec.pdf"
-        if not sample.exists():
-            return "sample PDF not found (skipped)"
         with PdfDoc(sample) as pdf:
             img = pdf.render(1, None, 50)
             return f"{pdf.page_count} pages parsed, render {img.size[0]}x{img.size[1]}px"
     check("PDF parse/render", pdf_roundtrip)
+
+    if args.full:
+        def full_pipeline() -> str:
+            import zipfile
+
+            from .service import Workspace
+            from .config import Settings
+            with tempfile.TemporaryDirectory(prefix="spec2kb-selftest-") as tmp:
+                ts = Settings()
+                ts.data_dir = Path(tmp)
+                ts.default_provider = "mock"
+                ws = Workspace(ts)
+                try:
+                    with open(sample, "rb") as fh:
+                        rec = ws.add_document("sample.pdf", fh, "jedec")
+                    job = ws.jobs.wait(ws.start_process(rec.id).id, 300)
+                    if job.status != "done":
+                        raise RuntimeError(job.error)
+                    summ = ws.get_record(rec.id).summary
+                    if summ.get("errors"):
+                        raise RuntimeError(f"validation errors on the reference sample: {summ}")
+                    z = ws.export_zip([rec.id])
+                    n = len(zipfile.ZipFile(z).namelist())
+                finally:
+                    ws.close()
+            return (f"sample converted: headings {summ['headings']}, tables {summ['tables']}, "
+                    f"figures {summ['figures']}, 0 errors, ZIP {n} files")
+        check("Full pipeline (mock provider)", full_pipeline)
 
     def providers() -> str:
         from .providers import ProviderStore
@@ -271,6 +298,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("doctor", help="설치/환경 자가 점검")
     sp.add_argument("--data-dir")
     sp.add_argument("--test-provider", help="지정한 Provider로 실제 호출 테스트")
+    sp.add_argument("--full", action="store_true", help="내장 샘플 PDF로 변환·검증·ZIP 전체 파이프라인 시험")
     sp.set_defaults(fn=cmd_doctor)
 
     sp = sub.add_parser("profiles", help="프로필 관리")

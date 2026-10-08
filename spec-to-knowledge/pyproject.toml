@@ -31,7 +31,7 @@ spec2kb = "spec2kb.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-spec2kb = ["profiles/builtin/*.json", "web/static/**/*", "web/static/*"]
+spec2kb = ["profiles/builtin/*.json", "web/static/**/*", "web/static/*", "selftest/*.pdf"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -21,7 +21,7 @@ from .jobs import BusyError, Job, JobContext, JobManager
 from .parser import PdfDoc, PdfOpenError, apply_overlay, assemble, carry_over_descriptions, parse_pages_raw
 from .parser.pdfdoc import PDFIUM_LOCK, validate_pdf_bytes
 from .parser.pipeline import RawPage
-from .profiles import Profile, ProfileError, ProfileStore, deep_merge
+from .profiles import Profile, ProfileError, ProfileStore
 from .providers import Provider, ProviderError, ProviderStore
 from .schema import CanonicalDocument, Issue, SourceInfo, utcnow
 from .store import DocRecord, DocumentStore
@@ -188,16 +188,16 @@ class Workspace:
         self.docs.save_record(rec)
         return job
 
-    def _on_finish(self, job: Job) -> None:
+    def _on_finish(self, job: Job, status: str) -> None:
         if not self.docs.exists(job.doc_id):
             return
         rec = self.docs.record(job.doc_id)
         has_canonical = (self.docs.dir(job.doc_id) / "canonical.json").exists()
-        if job.status == "done":
+        if status == "done":
             rec.status = "ready"
             rec.processed_at = utcnow()
             rec.error = ""
-        elif job.status == "cancelled":
+        elif status == "cancelled":
             rec.status = "ready" if has_canonical else "cancelled"
             rec.error = job.error
         else:
@@ -539,6 +539,18 @@ class Workspace:
                  "tables": sum(1 for t in doc.tables if any(x.page == p.number for x in t.parts))}
                 for p in doc.pages]
 
+    def figures_overview(self, doc_id: str) -> list[dict[str, Any]]:
+        doc = self._canonical(doc_id)
+        out = []
+        for f in doc.figures:
+            if f.kind == "page":
+                continue
+            d = f.description
+            out.append({"id": f.id, "number": f.number, "page": f.page, "caption": f.caption, "kind": f.kind,
+                        "image_type": f.image_type, "status": d.status if d else "pending",
+                        "reviewed": f.description_override is not None})
+        return out
+
     def page_image(self, doc_id: str, page_no: int, dpi: int | None = None) -> Path:
         rec = self.get_record(doc_id)
         if not 1 <= page_no <= rec.page_count:
@@ -693,6 +705,3 @@ class Workspace:
                 "default_provider": self.settings.default_provider,
                 "auth": bool(self.settings.basic_auth)}
 
-
-def merge_options(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
-    return deep_merge(base, extra)
